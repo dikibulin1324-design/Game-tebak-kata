@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Tebak Kata</title>
+<style>
+:root{--bg:#101827;--panel:#1b2940;--ink:#f4f7fb;--muted:#b9c6d8;--accent:#a3e635;--pink:#f0abfc}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#263b5b,#101827 62%);font-family:system-ui,Segoe UI,sans-serif;color:var(--ink);display:grid;place-items:center;padding:18px}
+.app{width:min(100%,620px);background:rgba(27,41,64,.96);border:1px solid #40516b;border-radius:24px;padding:24px;box-shadow:0 22px 70px #0008}
+h1{margin:0;font-size:clamp(28px,6vw,42px);letter-spacing:.5px} .sub{color:var(--muted);margin:6px 0 20px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.pill{background:#263852;border-radius:999px;padding:8px 13px;font-size:14px}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:18px 0}.level{border:1px solid #50627d;background:#263852;color:white;padding:12px 6px;border-radius:12px;font-weight:700;cursor:pointer}.level.active{background:var(--accent);color:#17220b;border-color:var(--accent)}
+.card{background:#111d30;border-radius:18px;padding:20px;margin:16px 0}.tag{color:var(--pink);font-size:12px;font-weight:800;letter-spacing:1px}.clue{font-size:20px;line-height:1.45;margin:10px 0 4px}.word{letter-spacing:8px;font-size:26px;font-weight:800;color:var(--accent);text-align:center;margin:16px 0}
+.row{display:flex;gap:9px}.row input{min-width:0;flex:1;background:#f7fafc;color:#172033;border:0;border-radius:12px;padding:14px;font-size:16px;outline:3px solid transparent}.row input:focus{outline-color:var(--accent)}button{font:inherit}.primary{background:var(--accent);color:#18230d;border:0;border-radius:12px;padding:13px 18px;font-weight:800;cursor:pointer}.secondary{background:#344965;color:white;border:1px solid #60738f;border-radius:12px;padding:11px 14px;cursor:pointer}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.msg{min-height:28px;margin:12px 0 0;color:var(--muted)}.good{color:#bef264}.bad{color:#fda4af}.hidden{display:none}.result-number{font-size:34px;font-weight:900;color:var(--accent)}.footer{font-size:12px;color:#93a4ba;text-align:center;margin-top:18px}
+@media(max-width:430px){.app{padding:18px}.row{flex-direction:column}.levels{gap:6px}.level{font-size:13px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <h1>🎯 TEBAK KATA</h1>
+  <p class="sub">60 soal: 20 Easy, 20 Medium, dan 20 Hard. Baca petunjuk dan kumpulkan poin!</p>
+  <div class="stats">
+    <span class="pill">⭐ Skor: <b id="score">0</b></span>
+    <span class="pill">❤️ Kesempatan: <b id="tries">6</b></span>
+    <span class="pill">🏆 Level: <b id="levelName">Easy</b></span>
+    <span class="pill">📝 Soal: <b id="questionNo">1/20</b></span>
+  </div>
+  <div class="levels">
+    <button class="level active" data-level="easy">Easy</button>
+    <button class="level" data-level="medium">Medium</button>
+    <button class="level" data-level="hard">Hard</button>
+  </div>
+  <section class="card" id="gameScreen">
+    <div class="tag" id="category">KATEGORI: HEWAN</div>
+    <div class="clue" id="clue">Aku hewan peliharaan yang suka mengeong.</div>
+    <div class="word" id="masked">_ _ _ _</div>
+    <div class="row">
+      <input id="guess" type="text" autocomplete="off" placeholder="Ketik jawabanmu..." aria-label="Jawaban">
+      <button class="primary" id="submit">TEBAK</button>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="hint">💡 Petunjuk tambahan</button>
+      <button class="secondary" id="next">Lewati kata</button>
+      <button class="secondary" id="restart">Ulangi game</button>
+    </div>
+    <p class="msg" id="message" aria-live="polite">Pilih level, lalu mulai menebak!</p>
+  </section>
+  <section class="card hidden" id="resultScreen">
+    <div class="tag">HASIL PERMAINAN</div>
+    <h2 style="font-size:30px;margin:8px 0">🎉 Permainan Selesai!</h2>
+    <p class="sub" id="resultLevel">Level Easy</p>
+    <div class="word" id="finalScore">0 / 200</div>
+    <div class="stats">
+      <span class="pill">✅ Benar: <b id="correctTotal">0</b></span>
+      <span class="pill">❌ Tidak terjawab: <b id="missedTotal">0</b></span>
+      <span class="pill">📊 Akurasi: <b id="accuracyTotal">0%</b></span>
+    </div>
+    <p class="clue" id="resultMessage">Kerja bagus!</p>
+    <div class="actions">
+      <button class="primary" id="playAgain">Main Lagi</button>
+      <button class="secondary" id="changeLevel">Pilih Level Lain</button>
+    </div>
+  </section>
+  <p class="footer">20 soal di setiap level • Jawaban benar = 10 poin (5 poin jika memakai petunj<script>
+const bank={
+ easy:[
+  {w:"KUCING",c:"HEWAN",q:"Aku hewan peliharaan yang suka mengeong.",h:"Aku sering mengejar tikus."},
+  {w:"PISANG",c:"BUAH",q:"Buah berwarna kuning yang kulitnya mudah dikupas.",h:"Monyet sering menyukainya."},
+  {w:"BUKU",c:"BENDA",q:"Benda yang berisi kumpulan halaman untuk dibaca.",h:"Biasanya ada di perpustakaan."},
+  {w:"HUJAN",c:"ALAM",q:"Air yang jatuh dari langit.",h:"Kita memakai payung saat ini turun."},
+  {w:"PENSIL",c:"ALAT SEKOLAH",q:"Alat untuk menulis yang bisa dihapus.",h:"Ujungnya perlu diraut."},
+  {w:"MANGGA",c:"BUAH",q:"Buah tropis dengan biji besar.",h:"Rasanya bisa manis atau asam."},
+  {w:"GAJAH",c:"HEWAN",q:"Hewan besar yang memiliki belalai.",h:"Telinganya lebar."},
+  {w:"SEPATU",c:"PAKAIAN",q:"Alas kaki untuk berjalan.",h:"Sering dipakai bersama kaus kaki."},
+  {w:"BINTANG",c:"ALAM",q:"Benda langit yang berkelip malam hari.",h:"Matahari juga termasuk jenisnya."},
+  {w:"SENDOK",c:"PERALATAN",q:"Alat makan untuk mengambil sup.",h:"Biasanya digunakan bersama garpu."},
+  {w:"KELAPA",c:"TUMBUHAN",q:"Buah berkulit keras dan memiliki air.",h:"Pohonnya tinggi di pantai."},
+  {w:"TOPI",c:"PAKAIAN",q:"Benda yang dipakai di kepala.",h:"Melindungi dari panas matahari."},
+  {w:"MOBIL",c:"KENDARAAN",q:"Kendaraan roda empat di jalan raya.",h:"Memiliki setir dan pintu."},
+  {w:"AYAM",c:"HEWAN",q:"Unggas yang berkokok pada pagi hari.",h:"Menghasilkan telur."},
+  {w:"KURSI",c:"PERABOT",q:"Benda yang digunakan untuk duduk.",h:"Memiliki kaki dan sandaran."},
+  {w:"SUSU",c:"MINUMAN",q:"Minuman putih yang sering berasal dari sapi.",h:"Mengandung kalsium."},
+  {w:"PANTAI",c:"TEMPAT",q:"Daerah pertemuan daratan dan laut.",h:"Memiliki pasir dan ombak."},
+  {w:"JERUK",c:"BUAH",q:"Buah oranye yang kaya vitamin C.",h:"Rasanya sering sedikit asam."},
+  {w:"PAYUNG",c:"BENDA",q:"Benda yang dibuka di atas kepala saat hujan.",h:"Memiliki gagang dan rangka."},
+  {w:"BOLA",c:"OLAHRAGA",q:"Benda bulat untuk berbagai permainan.",h:"Ditendang dalam sepak bola."}
+ ],
+ medium:[
+  {w:"SEPEDA",c:"KENDARAAN",q:"Kendaraan roda dua yang digerakkan dengan kayuhan kaki.",h:"Tidak menggunakan bensin."},
+  {w:"KELINCI",c:"HEWAN",q:"Hewan bertelinga panjang yang suka melompat.",h:"Suka makan wortel."},
+  {w:"JENDELA",c:"BAGIAN RUMAH",q:"Bagian rumah yang membuat udara dan cahaya masuk.",h:"Biasanya memiliki kaca."},
+  {w:"PELANGI",c:"ALAM",q:"Busur warna-warni yang sering terlihat setelah hujan.",h:"Memiliki tujuh warna."},
+  {w:"KAMERA",c:"TEKNOLOGI",q:"Alat untuk mengambil foto atau merekam video.",h:"Ada lensa di bagian depannya."},
+  {w:"KOMPUTER",c:"TEKNOLOGI",q:"Perangkat elektronik untuk mengolah data.",h:"Memiliki monitor dan papan ketik."},
+  {w:"SEKOLAH",c:"PENDIDIKAN",q:"Tempat siswa belajar bersama guru.",h:"Memiliki ruang kelas."},
+  {w:"MATAHARI",c:"ALAM",q:"Pusat tata surya yang memberi cahaya dan panas.",h:"Terbit dari arah timur."},
+  {w:"KERETA",c:"KENDARAAN",q:"Kendaraan panjang yang berjalan di atas rel.",h:"Berhenti di stasiun."},
+  {w:"DOKTER",c:"PEKERJAAN",q:"Tenaga profesional yang merawat orang sakit.",h:"Bekerja di klinik atau rumah sakit."},
+  {w:"SAMPAH",c:"LINGKUNGAN",q:"Sisa kegiatan manusia yang tidak digunakan.",h:"Harus dibuang pada tempatnya."},
+  {w:"LAPANGAN",c:"TEMPAT",q:"Area terbuka untuk bermain atau berolahraga.",h:"Sering digunakan untuk upacara."},
+  {w:"KOMPAS",c:"ALAT",q:"Alat penunjuk arah mata angin.",h:"Jarumnya membantu menemukan utara."},
+  {w:"BENDERA",c:"SIMBOL",q:"Kain dengan warna atau lambang identitas negara.",h:"Dikibarkan saat upacara."},
+  {w:"TERUMBU",c:"LAUT",q:"Struktur bawah laut tempat hidup banyak hewan.",h:"Sering disebut bersama kata karang."},
+  {w:"PESAWAT",c:"KENDARAAN",q:"Kendaraan yang terbang membawa penumpang.",h:"Berangkat dari bandara."},
+  {w:"KALENDER",c:"BENDA",q:"Alat untuk melihat tanggal, hari, dan bulan.",h:"Sering digantung di dinding."},
+  {w:"APOTEK",c:"TEMPAT",q:"Tempat untuk membeli obat-obatan.",h:"Apoteker bekerja di sini."},
+  {w:"OLAHRAGA",c:"AKTIVITAS",q:"Kegiatan fisik untuk menjaga kebugaran.",h:"Contohnya lari dan berenang."},
+  {w:"PENGGARIS",c:"ALAT SEKOLAH",q:"Alat untuk mengukur panjang dan membuat garis lurus.",h:"Memiliki skala sentimeter."}
+ ],
+ hard:[
+  {w:"PERPUSTAKAAN",c:"TEMPAT",q:"Tempat yang menyimpan banyak koleksi buku untuk dibaca atau dipinjam.",h:"Siswa sering datang ke sini untuk mencari referensi."},
+  {w:"KEBUDAYAAN",c:"PENGETAHUAN",q:"Cara hidup, adat, dan hasil karya yang berkembang dalam masyarakat.",h:"Terkait tradisi dan warisan suatu daerah."},
+  {w:"ASTRONOMI",c:"ILMU PENGETAHUAN",q:"Ilmu yang mempelajari benda-benda langit dan alam semesta.",h:"Mempelajari planet, bintang, dan galaksi."},
+  {w:"EKOSISTEM",c:"LINGKUNGAN",q:"Hubungan timbal balik antara makhluk hidup dan lingkungannya.",h:"Terdiri dari komponen biotik dan abiotik."},
+  {w:"KREATIVITAS",c:"KEMAMPUAN",q:"Kemampuan menghasilkan ide atau karya yang baru dan unik.",h:"Sangat dibutuhkan saat membuat sesuatu yang inovatif."},
+  {w:"DEMOKRASI",c:"PEMERINTAHAN",q:"Sistem pemerintahan yang melibatkan partisipasi rakyat.",h:"Salah satu caranya melalui pemilu."},
+  {w:"METEOROLOGI",c:"ILMU",q:"Ilmu yang mempelajari atmosfer dan gejala cuaca.",h:"Membantu membuat prakiraan hujan."},
+  {w:"KEANEKARAGAMAN",c:"LINGKUNGAN",q:"Kondisi beragamnya jenis makhluk hidup di suatu wilayah.",h:"Sering disebut keanekaragaman hayati."},
+  {w:"TEKNOLOGI",c:"PENGETAHUAN",q:"Penerapan ilmu untuk memudahkan pekerjaan manusia.",h:"Komputer dan internet adalah contohnya."},
+  {w:"KOMUNIKASI",c:"AKTIVITAS",q:"Proses menyampaikan pesan dari satu pihak ke pihak lain.",h:"Dapat dilakukan lisan atau tulisan."},
+  {w:"INOVASI",c:"PENGETAHUAN",q:"Pembaruan yang memberi nilai tambah pada sesuatu.",h:"Sering menghasilkan produk atau cara baru."},
+  {w:"KONSERVASI",c:"LINGKUNGAN",q:"Upaya perlindungan dan pelestarian sumber daya alam.",h:"Bertujuan menjaga alam tetap lestari."},
+  {w:"ARKEOLOGI",c:"ILMU",q:"Ilmu yang mempelajari kehidupan manusia masa lalu melalui peninggalan.",h:"Meneliti artefak dan situs kuno."},
+  {w:"ENTREPRENEUR",c:"PEKERJAAN",q:"Istilah untuk seseorang yang membangun dan mengelola usaha.",h:"Dalam bahasa Indonesia disebut wirausahawan."},
+  {w:"KESETIMBANGAN",c:"KONSEP",q:"Keadaan ketika berbagai kekuatan berada dalam kondisi seimbang.",h:"Lawan dari keadaan tidak stabil."},
+  {w:"FOTOSINTESIS",c:"BIOLOGI",q:"Proses tumbuhan membuat makanan dengan bantuan cahaya.",h:"Melibatkan air dan karbon dioksida."},
+  {w:"INTERNASIONAL",c:"ISTILAH",q:"Sesuatu yang melibatkan atau mencakup banyak negara.",h:"Contohnya hubungan antarnegara."},
+  {w:"TRANSFORMASI",c:"ISTILAH",q:"Perubahan bentuk, sifat, atau keadaan secara menyeluruh.",h:"Sering digunakan untuk perubahan besar."},
+  {w:"KEWIRAUSAHAAN",c:"EKONOMI",q:"Kemampuan menciptakan dan mengelola peluang usaha.",h:"Berkaitan dengan kreativitas dan risiko."},
+  {w:"IDENTIFIKASI",c:"ISTILAH",q:"Proses menentukan atau mengenali identitas suatu objek.",h:"Dilakukan untuk mengetahui apa atau siapa sesuatu."}
+ ]};
+
+const config={easy:6,medium:5,hard:4};
+let level="easy",score=0,tries=6,current=null,used=[],hintUsed=false,locked=false;
+let correctCount=0,missedCount=0,transitionTimer=null;
+const $=id=>document.getElementById(id);
+
+function update(){
+ $("score").textContent=score;
+ $("tries").textContent=tries;
+ $("questionNo").textContent=Math.min(used.length,20)+"/20";
+}
+function startLevel(){
+ clearTimeout(transitionTimer);
+ score=0;correctCount=0;missedCount=0;used=[];
+ $("resultScreen").classList.add("hidden");
+ $("gameScreen")?.classList.remove("hidden");
+ pick();
+}
+function showResults(){
+ clearTimeout(transitionTimer);
+ $("gameScreen")?.classList.add("hidden");
+ $("resultScreen").classList.remove("hidden");
+ const total=bank[level].length;
+ const accuracy=Math.round((correctCount/total)*100);
+ $("resultLevel").textContent="Level "+level.charAt(0).toUpperCase()+level.slice(1)+" • "+total+" soal";
+ $("finalScore").textContent=score+" / "+(total*10);
+ $("correctTotal").textContent=correctCount;
+ $("missedTotal").textContent=missedCount;
+ $("accuracyTotal").textContent=accuracy+"%";
+ $("resultMessage").textContent=accuracy===100?"Sempurna! Semua soal berhasil dijawab dengan benar!":accuracy>=70?"Hebat! Terus tingkatkan kemampuanmu.":accuracy>=40?"Bagus, terus berlatih agar hasilnya lebih baik.":"Jangan menyerah! Coba lagi dan tingkatkan skormu.";
+}
+function pick(){
+ if(used.length>=bank[level].length){showResults();return;}
+ const list=bank[level];
+ const choices=list.map((x,i)=>i).filter(i=>!used.includes(i));
+ const i=choices[Math.floor(Math.random()*choices.length)];
+ used.push(i);
+ current=list[i];tries=config[level];hintUsed=false;locked=false;
+ $("category").textContent="KATEGORI: "+current.c;
+ $("clue").textContent=current.q;
+ $("masked").textContent=current.w.split("").map(()=>"_").join(" ");
+ $("levelName").textContent=level.charAt(0).toUpperCase()+level.slice(1);
+ $("guess").value="";$("guess").disabled=false;$("submit").disabled=false;
+ $("message").textContent="Masukkan jawabanmu. Semangat!";
+ $("message").className="msg";
+ $("next").textContent="Lewati soal";
+ $("next").disabled=false;
+ update();$("guess").focus();
+}
+function submit(){
+ if(locked)return;
+ const val=$("guess").value.trim().toUpperCase();
+ if(!val){
+  $("message").textContent="Ketik jawaban terlebih dahulu.";
+  $("message").className="msg bad";return;
+ }
+ if(val===current.w){
+  score+=hintUsed?5:10;correctCount++;locked=true;
+  $("masked").textContent=current.w.split("").join(" ");
+  $("message").textContent="Benar! 🎉 "+(hintUsed?"+5":" +10")+" poin. Memuat soal berikutnya...";
+  $("message").className="msg good";
+  $("guess").disabled=true;$("submit").disabled=true;$("next").disabled=true;
+  update();
+  transitionTimer=setTimeout(pick,1100);
+ }else{
+  tries--;
+  $("message").textContent=tries>0?"Belum tepat, coba lagi!":"Kesempatan habis. Jawabannya adalah "+current.w+". Tekan Lewati soal untuk lanjut.";
+  $("message").className="msg bad";
+  if(tries===0){
+   locked=true;missedCount++;
+   $("guess").disabled=true;$("submit").disabled=true;
+   $("next").textContent="Soal berikutnya";
+  }
+  update();
+ }
+ $("guess").value="";
+}
+$("submit").addEventListener("click",submit);
+$("guess").addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+$("hint").addEventListener("click",()=>{
+ if(locked)return;
+ if(hintUsed){$("message").textContent="Petunjuk tambahan sudah digunakan.";return;}
+ hintUsed=true;$("message").textContent="💡 "+current.h+" (Poin jawaban benar menjadi 5).";
+});
+$("next").addEventListener("click",()=>{
+ if(locked && tries===0){pick();return;}
+ if(!locked){missedCount++;pick();}
+});
+$("restart").addEventListener("click",startLevel);
+$("playAgain").addEventListener("click",startLevel);
+$("changeLevel").addEventListener("click",()=>{
+ $("resultScreen").classList.add("hidden");
+ $("gameScreen")?.classList.remove("hidden");
+ $("message").textContent="Pilih tingkat kesulitan yang ingin dimainkan.";
+});
+document.querySelectorAll(".level").forEach(b=>b.addEventListener("click",()=>{
+ level=b.dataset.level;
+ document.querySelectorAll(".level").forEach(x=>x.classList.toggle("active",x===b));
+ startLevel();
+}));
+startLevel();
+</script>ate();
+</script>
+</body>
+</html>
